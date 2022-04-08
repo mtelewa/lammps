@@ -1,0 +1,392 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>8.1.8. Using LAMMPS with the MDI library for code coupling &mdash; LAMMPS documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/tabs.css" type="text/css" />
+  <link rel="stylesheet" href="_static/css/lammps.css" type="text/css" />
+
+  
+  
+    <link rel="shortcut icon" href="_static/lammps.ico"/>
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="8.2.1. 2d simulations" href="Howto_2d.html" />
+    <link rel="prev" title="8.1.7. Using LAMMPS in client/server mode" href="Howto_client_server.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="Manual.html">
+          
+
+          
+            
+            <img src="_static/lammps-logo.png" class="logo" alt="Logo"/>
+          
+          </a>
+
+          
+              <div class="lammps_version">Version: <b>29 Sep 2021</b></div>
+              <div class="lammps_release">git info: patch 29Sep2021 update3</div>
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="Intro.html">1. Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Install.html">2. Install LAMMPS</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Build.html">3. Build LAMMPS</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Run_head.html">4. Run LAMMPS</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Commands.html">5. Commands</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Packages.html">6. Optional packages</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Speed.html">7. Accelerate performance</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="Howto.html">8. Howto discussions</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="Howto.html#general-howto">8.1. General howto</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="Howto_restart.html">8.1.1. Restart a simulation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Howto_viz.html">8.1.2. Visualize LAMMPS snapshots</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Howto_multiple.html">8.1.3. Run multiple simulations from one input script</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Howto_replica.html">8.1.4. Multi-replica simulations</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Howto_library.html">8.1.5. Library interface to LAMMPS</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Howto_couple.html">8.1.6. Coupling LAMMPS to other codes</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Howto_client_server.html">8.1.7. Using LAMMPS in client/server mode</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">8.1.8. Using LAMMPS with the MDI library for code coupling</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="Howto.html#settings-howto">8.2. Settings howto</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Howto.html#analysis-howto">8.3. Analysis howto</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Howto.html#force-fields-howto">8.4. Force fields howto</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Howto.html#packages-howto">8.5. Packages howto</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Howto.html#tutorials-howto">8.6. Tutorials howto</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Examples.html">9. Example scripts</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Tools.html">10. Auxiliary tools</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Errors.html">11. Errors</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Programmer Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="Library.html">1. LAMMPS Library Interfaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Python_head.html">2. Use Python with LAMMPS</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Modify.html">3. Modifying &amp; extending LAMMPS</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Developer.html">4. Information for Developers</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Command Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="commands_list.html">Commands</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fixes.html">Fixes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="computes.html">Computes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="pairs.html">Pair Styles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="bonds.html">Bond Styles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="angles.html">Angle Styles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dihedrals.html">Dihedral Styles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="impropers.html">Improper Styles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fix_modify_atc_commands.html">fix_modify AtC commands</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Bibliography.html">Bibliography</a></li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="Manual.html">LAMMPS</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content style-external-links">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="Manual.html" class="icon icon-home"></a> &raquo;</li>
+        
+          <li><a href="Howto.html"><span class="section-number">8. </span>Howto discussions</a> &raquo;</li>
+        
+      <li><span class="section-number">8.1.8. </span>Using LAMMPS with the MDI library for code coupling</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+          
+          <a href="https://www.lammps.org">Website</a>
+          <a href="Commands_all.html">Commands</a>
+        
+      </li>
+    
+  </ul>
+
+  
+  <div class="rst-breadcrumbs-buttons" role="navigation" aria-label="breadcrumb navigation">
+      
+        <a href="Howto_2d.html" class="btn btn-neutral float-right" title="8.2.1. 2d simulations" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="Howto_client_server.html" class="btn btn-neutral float-left" title="8.1.7. Using LAMMPS in client/server mode" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+  </div>
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="using-lammps-with-the-mdi-library-for-code-coupling">
+<h1><span class="section-number">8.1.8. </span>Using LAMMPS with the MDI library for code coupling<a class="headerlink" href="#using-lammps-with-the-mdi-library-for-code-coupling" title="Permalink to this headline">¶</a></h1>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>This Howto page will eventually replace the
+<a class="reference internal" href="Howto_client_server.html"><span class="doc">Howto client/server</span></a> doc page.</p>
+</div>
+<p>Client/server coupling of two codes is where one code is the “client”
+and sends request messages (data) to a “server” code.  The server
+responds to each request with a reply message.  This enables the two
+codes to work in tandem to perform a simulation.  LAMMPS can act as
+either a client or server code; it does this by using the <a class="reference external" href="https://molssi-mdi.github.io/MDI_Library/html/index.html">MolSSI
+Driver Interface (MDI) library</a>,
+developed by the <a class="reference external" href="https://molssi.org">Molecular Sciences Software Institute (MolSSI)</a>.</p>
+<p>Alternate methods for code coupling with LAMMPS are described on the
+<a class="reference internal" href="Howto_couple.html"><span class="doc">Howto couple</span></a> doc page.</p>
+<p>Some advantages of client/server coupling are that the two codes can run
+as stand-alone executables; they need not be linked together.  Thus
+neither code needs to have a library interface.  This also makes it easy
+to run the two codes on different numbers of processors.  If a message
+protocol (format and content) is defined for a particular kind of
+simulation, then in principle any code which implements the client-side
+protocol can be used in tandem with any code which implements the
+server-side protocol.  Neither code needs to know what specific other
+code it is working with.</p>
+<p>In MDI nomenclature, a client code is the “driver”, and a server code is
+an “engine”.  One driver code can communicate with one or more instances
+of one or more engine codes.  Driver and engine codes can be written in
+any language: C, C++, Fortran, Python, etc.</p>
+<p>In addition to allowing driver and engine(s) running to run as
+stand-alone executables, MDI also enables a server code to be a
+“plugin” to the client code.  In this scenario, server code(s) are
+compiled as shared libraries, and one (or more) instances of the
+server are instantiated by the driver code.  If the driver code runs
+in parallel, it can split its MPI communicator into multiple
+sub-communicators, and launch each plugin engine instance on a
+sub-communicator.  Driver processors in that sub-communicator exchange
+messages with that engine instance, and can also send MPI messages to
+other processors in the driver.  The driver code can also destroy
+engine instances and re-instantiate them.</p>
+<p>The way that a driver communicates with an engine is by making
+MDI_Send() and MDI_Recv() calls, which are conceptually similar to
+MPI_Send() and MPI_Recv() calls.  Each send or receive has a string
+which identifies the command name, and optionally some data, which can
+be a single value or vector of values of any data type.  Inside the
+MDI library, data is exchanged between the driver and engine via MPI
+calls or sockets.  This a run-time choice by the user.</p>
+<hr class="docutils" />
+<p>As an example, LAMMPS and the <code class="docutils literal notranslate"><span class="pre">pw.x</span></code> command from Quantum Espresso (a
+suite of quantum DFT codes), can work together via the MDI library to
+perform an ab initio MD (AIMD) simulation, where LAMMPS runs an MD
+simulation and sends a message each timestep to <code class="docutils literal notranslate"><span class="pre">pw.x</span></code> asking it to
+compute quantum forces on the current configuration of atoms.  Here is
+how the 2 codes are launched to communicate by MPI:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>% mpirun -np <span class="m">2</span> lmp_mpi -mdi <span class="s2">&quot;-role DRIVER -name d -method MPI&quot;</span> <span class="se">\</span>
+  -in <span class="k">in</span>.aimd : -np <span class="m">16</span> pw.x -in qe.in -mdi <span class="s2">&quot;-role ENGINE -name e -method MPI&quot;</span>
+</pre></div>
+</div>
+<p>In this case LAMMPS runs on 2 processors (MPI tasks), <code class="docutils literal notranslate"><span class="pre">pw.x</span></code> runs on 16
+processors.</p>
+<p>Here is how the 2 codes are launched to communicate by sockets:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>% mpirun -np <span class="m">2</span> lmp_mpi -mdi <span class="s2">&quot;-role DRIVER -name d -method TCP -port 8021&quot;</span> -in <span class="k">in</span>.aimd
+% mpirun -np <span class="m">16</span> pw.x -in qe.in -mdi <span class="s2">&quot;-role ENGINE -name e -method TCP -port 8021 -hostname localhost&quot;</span>
+</pre></div>
+</div>
+<p>These commands could be issued in different windows on a desktop
+machine.  Or in the same window, if the first command is ended with
+“&amp;” so as to run in the background.  If “localhost” is replaced by an
+IP address, <code class="docutils literal notranslate"><span class="pre">pw.x</span></code> could be run on another machine on the same network, or
+even on another machine across the country.</p>
+<p>After both codes initialize themselves to model the same system, this is
+what occurs each timestep:</p>
+<ul class="simple">
+<li><p>LAMMPS send a “&gt;COORDS” message to <code class="docutils literal notranslate"><span class="pre">pw.x</span></code> with a 3*N vector of current atom coords</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">pw.x</span></code> receives the message/coords and computes quantum forces on all the atoms</p></li>
+<li><p>LAMMPS send a “&lt;FORCES” message to <code class="docutils literal notranslate"><span class="pre">pw.x</span></code> and waits for the result</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">pw.x</span></code> receives the message (after its computation finishes) and sends a 3*N vector of forces</p></li>
+<li><p>LAMMPS receives the forces and time integrates to complete a single timestep</p></li>
+</ul>
+<hr class="docutils" />
+<p>Examples scripts for using LAMMPS as an MDI engine are in the
+examples/mdi directory.  See the README file in that directory for
+instructions on how to run the examples.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Work is underway to add commands that allow LAMMPS to be used as an
+MDI driver, e.g. for the AIMD example discussed above.  Example
+scripts for this usage mode will be added the same directory when
+available.</p>
+</div>
+<p>If LAMMPS is used as a stand-alone engine it should set up the system
+it will be modeling in its input script, then invoke the
+<a class="reference internal" href="mdi_engine.html"><span class="doc">mdi/engine</span></a> command.  This will put LAMMPS into
+“engine mode” where it waits for messages and data from the driver.
+When the driver sends an “EXIT” command, LAMMPS will exit engine mode
+and the input script will continue.</p>
+<p>If LAMMPS is used as a plugin engine it operates the same way, except
+that the driver will pass LAMMPS an input script to initialize itself.
+Upon receiving the “EXIT” command, LAMMPS will exit engine mode and the
+input script will continue.  After finishing execution of the input
+script, the instance of LAMMPS will be destroyed.</p>
+<p>LAMMPS supports the full set of MD-appropriate engine commands defined
+by the MDI library.  See the <a class="reference internal" href="mdi_engine.html"><span class="doc">mdi/engine</span></a> page for
+a list of these.</p>
+<p>If those commands are not sufficient for a user-developed driver to use
+LAMMPS as an engine, then new commands can be easily added.  See these
+two files which implement the definition of MDI commands and the logic
+for responding to them:</p>
+<ul class="simple">
+<li><p>src/MDI/mdi_engine.cpp</p></li>
+<li><p>src/MDI/fix_mdi_engine.cpp</p></li>
+</ul>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="Howto_2d.html" class="btn btn-neutral float-right" title="8.2.1. 2d simulations" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="Howto_client_server.html" class="btn btn-neutral float-left" title="8.1.7. Using LAMMPS in client/server mode" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        
+        &copy; Copyright 2003-2022 Sandia Corporation
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(false);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>
