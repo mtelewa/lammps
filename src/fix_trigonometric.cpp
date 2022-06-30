@@ -34,7 +34,7 @@
 using namespace LAMMPS_NS;
 using namespace FixConst;
 
-/* DSYEV prototype */
+/* dsteqr prototype */
 extern "C"
 {
 extern void dsteqr_(char*, int*, double*, double*, double*, int* ,double* ,int*);
@@ -71,9 +71,9 @@ int FixTrigonometric::setmask()
   int mask = 0;
   mask |= FixConst::POST_NEIGHBOR;
   mask |= FixConst::POST_FORCE;
-  mask |= FixConst::INITIAL_INTEGRATE;
-  mask |= FixConst::END_OF_STEP;
-  mask |= FixConst::POST_INTEGRATE;
+  //mask |= FixConst::INITIAL_INTEGRATE;
+  //mask |= FixConst::END_OF_STEP;
+  //mask |= FixConst::POST_INTEGRATE;
   return mask;
 }
 
@@ -109,11 +109,14 @@ void FixTrigonometric::setup(int /*vflag*/)
   double **f = atom->f;
   int *type = atom->type;
   double *mass = atom->mass;
+  int *mask = atom->mask;
   int nlocal = atom->nlocal, dim = 3;
 
   double delta_t = sqrt(force->ftm2v) * update->dt;
   int tmp;
   int i, n, d; 
+
+  printf("DELTA_T: %f\n", delta_t);
 
   for(n = 0; n < 3; n++) {
     for (d = 0; d < 2; d++) {
@@ -138,7 +141,8 @@ void FixTrigonometric::setup(int /*vflag*/)
   memory->create(forceOut, 3 * nlocal, "trigonometric:forceOut");
   for (i = 0; i < nlocal; i++)
     for (d = 0; d < dim; d++) 
-      forceVec[index(i,d)] = f[i][d] / sqrt(mass[type[i]]);
+      if (mask[i] & groupbit)
+        forceVec[index(i,d)] = f[i][d] / sqrt(mass[type[i]]);
 
   
   tmp = updateHessian();
@@ -152,13 +156,16 @@ void FixTrigonometric::setup(int /*vflag*/)
     //Evaluate functions
     matFuncPara(&forceKry, delta_t, 3, dim * nlocal, forceOut);  //psi
     //Set new force
+    
     for (i = 0; i < nlocal; i++)
       for (d = 0; d < dim; d++)
         f[i][d] = forceOut[index(i,d)];
+
   }
+  
   for (i = 0; i < nlocal; i++)
     for (d = 0; d < dim; d++)
-      f[i][d] *= (mass[type[i]]);
+      f[i][d] *= sqrt(mass[type[i]]);
  
 }
       
@@ -169,9 +176,12 @@ void FixTrigonometric::initial_integrate(int vflag) {
   int *type = atom->type;
   double *mass = atom->mass;
   int nlocal = atom->nlocal, dim = 3;
+  double **f = atom->f;
 
-  for (int i = 0; i < (nlocal); i++) {
+  for (int i = 0; i < nlocal; i++) {
     for (int d = 0; d < dim; d++) {
+      //Scale equation
+      f[i][d] *= sqrt(mass[type[i]]);
       x[i][d] *= sqrt(mass[type[i]]);
       v[i][d] *= sqrt(mass[type[i]]);
     }
@@ -188,19 +198,6 @@ void FixTrigonometric::post_integrate() {
   for (int i = 0; i < nlocal; i++) {
     for (int d = 0; d < dim; d++) {
       x[i][d] /= sqrt(mass[type[i]]);
-      v[i][d] /= sqrt(mass[type[i]]);
-    }
-  }
-}
-
-void FixTrigonometric::end_of_step() {
-  double **v = atom->v;
-  int *type = atom->type;
-  double *mass = atom->mass;
-  int nlocal = atom->nlocal, dim = 3;
-
-  for (int i = 0; i < nlocal; i++) {
-    for (int d = 0; d < dim; d++) {
       v[i][d] /= sqrt(mass[type[i]]);
     }
   }
@@ -270,10 +267,26 @@ void FixTrigonometric::post_force(int /*vflag*/) {
         f[i][d] = forceOut[index(i,d)];
 
   }
+  
   for (i = 0; i < (nlocal); i++) {
     for (d = 0; d < dim; d++) {      
-      f[i][d] *= (mass[type[i]]);
-      v[i][d] *= sqrt(mass[type[i]]);
+      f[i][d] *= sqrt(mass[type[i]]);
+      //v[i][d] *= sqrt(mass[type[i]]);
+    }
+  }
+}
+
+void FixTrigonometric::end_of_step() {
+  double **v = atom->v;
+  double **f = atom->f;
+  int *type = atom->type;
+  double *mass = atom->mass;
+  int nlocal = atom->nlocal, dim = 3;
+
+  for (int i = 0; i < nlocal; i++) {
+    for (int d = 0; d < dim; d++) {
+      v[i][d] /= sqrt(mass[type[i]]);
+      //f[i][d] /= sqrt(mass[type[i]]);
     }
   }
 }
@@ -288,6 +301,8 @@ void FixTrigonometric::matVecImpl(double* in, double* out) {
   int *aType = atom->type;
   int **bondlist = neighbor->bondlist;
   int nlocal = atom->nlocal;
+  int *mask = atom->mask;
+
   int dim = 3;
 
   commVec(in);
@@ -308,17 +323,25 @@ void FixTrigonometric::matVecImpl(double* in, double* out) {
     tmp11 = m[aType[i1]];
     tmp22 = m[aType[i2]];
     tmp12 = sqrt(tmp11) * sqrt(tmp22);
-
+    //printf("Bond %d between %d and %d\n", n, i1,i2);
     for (d = 0; d < dim; d++) {
       for (b = 0; b < dim; b++) {
-        out[index(i1,d)] += (implHessian[n][d * dim + b] / tmp12) * in[index(i2,b)];
-        out[index(i1,d)] -= (implHessian[n][d * dim + b] / tmp11) * in[index(i1,b)];
-        //Symmetry in all things
-        out[index(i2,b)] += (implHessian[n][d * dim + b] / tmp12) * in[index(i1,d)];
-        out[index(i2,b)] -= (implHessian[n][d * dim + b] / tmp22) * in[index(i2,d)];
-
+        if (mask[i1] & groupbit) {
+          out[index(i1,d)] -= (implHessian[n][d * dim + b] / tmp11) * in[index(i1,b)];
+          //printf("1\n");
+          if (mask[i2] & groupbit) {
+            //printf("2\n");
+            out[index(i1,d)] += (implHessian[n][d * dim + b] / tmp12) * in[index(i2,b)];
+            out[index(i2,d)] += (implHessian[n][d * dim + b] / tmp12) * in[index(i1,b)];
+          }
+        }
+        if (mask[i2] & groupbit) {
+          //printf("3\n");
+          out[index(i2,d)] -= (implHessian[n][d * dim + b] / tmp22) * in[index(i2,b)];
+        }
       }
     }
+    //getchar();
   }
 
   for (i = 0; i < 3; i++) {
@@ -335,8 +358,13 @@ void FixTrigonometric::matVecImpl(double* in, double* out) {
         for (d = 0; d < dim; d++) {
           for (b = 0; b < dim; b++) {
             //i1 always local - i2 always ghost.
-            out[index(i1,d)] += (hetProcStrcs[i][dm].shrdHessian[n][d * dim + b] / tmp12) * hetProcStrcs[i][dm].hetRecv[index(n,b)];
-            out[index(i1,d)] -= (hetProcStrcs[i][dm].shrdHessian[n][d * dim + b] / tmp11) * hetProcStrcs[i][dm].hetSend[index(n,b)];
+
+            if (mask[i1] & groupbit) {
+              out[index(i1,d)] -= (hetProcStrcs[i][dm].shrdHessian[n][d * dim + b] / tmp11) * hetProcStrcs[i][dm].hetSend[index(n,b)];
+              if (mask[i2] & groupbit) {
+                out[index(i1,d)] += (hetProcStrcs[i][dm].shrdHessian[n][d * dim + b] / tmp12) * hetProcStrcs[i][dm].hetRecv[index(n,b)];
+              }
+            }
           }
         }
       }
@@ -393,13 +421,13 @@ void FixTrigonometric::lanczosImplPara(double *b, KrylovStrc *strc, int n) {
       strc->matV[0][i] = b[i] / strc->norm;
 
     matVecImpl(strc->matV[0], mat_v);
+
     strc->alpha[0] = vecVecProdPara(mat_v, strc->matV[0], n);
 
     for (i = 0; i < n; i++) 
       strc->matV[1][i] = mat_v[i] - strc->alpha[0] * strc->matV[0][i];
 
      for (m = 1; m < nRho - 1; m++) {
-       //getchar();
       counter++;
       strc->beta[m - 1] = calcNormPara(strc->matV[m], n);
       if (strc->beta[m - 1] < 0.001) break;
@@ -450,6 +478,8 @@ double fac(double x) {
 
 double evaluatePsi(double value, double delta_t, int taylorLV) {
   double tmpVal, sum;
+  //printf("%f %f-> ", value, delta_t);
+
   if (fabs((sqr(delta_t) / 4.0) * value) > 0.001) {
     if(value > 0) {				
       value = sqrt(value);
@@ -473,6 +503,7 @@ double evaluatePsi(double value, double delta_t, int taylorLV) {
     }
     value = sqr(sum);
   }
+  //printf("%f \n", value);
 
   return value;
 }
@@ -1518,8 +1549,11 @@ int FixTrigonometric::updateHessian() {
     if (r > 0.0) { 
       for (d = 0; d < dim; d++) {
         for (b = 0; b < dim; b++) {
-          implHessian[n][counter++] = - (k0B) * ((del[d] * del[b]) * r0B) / (r * r * r);
+          implHessian[n][counter++] =  -k0B*r0B/(r*rsq) * ((del[d] * del[b]));//(r0B/r)*(1.0-(del[d]*del[b])/rsq)-1.0; 2//(k0B) * ((del[d] * del[b]) * r0B) / (r * r * r)
         }
+      }
+      for (d = 0; d < dim; d++) {
+        //implHessian[n][4*d] +=  k0B*(r-r0B)/(r);
       }
     } else {
       for (d = 0; d < dim; d++) {
