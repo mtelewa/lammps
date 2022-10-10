@@ -16,12 +16,7 @@
    ------------------------------------------------------------------------- */
 
 #include "fix_trigonometric.h"
-//#include <mpi.h>
-//#include <cstring>
 #include "update.h"
-#include "input.h"
-#include "modify.h"
-#include "variable.h"
 #include "memory.h"
 #include "error.h"
 #include "bond.h"
@@ -71,62 +66,27 @@ int FixTrigonometric::setmask()
   int mask = 0;
   mask |= FixConst::POST_NEIGHBOR;
   mask |= FixConst::POST_FORCE;
-  //mask |= FixConst::INITIAL_INTEGRATE;
-  //mask |= FixConst::END_OF_STEP;
-  //mask |= FixConst::POST_INTEGRATE;
   return mask;
-}
-
-/* ---------------------------------------------------------------------- */
-
-void FixTrigonometric::init()
-{
-}
-
-//DELETE BEFORE SHIPMENT
-void printMat(double **mat, int n) {
-  printf("----%d x %d MATRIX----\n", n, n);
-  for (int i = 0; i < n; i++) {
-    for (int j = 0; j < n; j++) {
-      printf("%f ", mat[i][j]);
-    }
-    printf("\n");
-  }
-}
-
-//DELETE BEFORE SHIPMENT
-void FixTrigonometric::printVec(double *vec, int n) {
-  printf("----%d Vector %d----\n", n, comm->me);
-  int c = 1;
-  for (int i = 0; i < n; i++) {
-    printf("(%d|%d) %.30f\n", comm->me, c, vec[i]);
-    if((i+1)%3 == 0) c++;
-  }
 }
 
 void FixTrigonometric::setup(int /*vflag*/)
 {
   double **f = atom->f;
-  int *type = atom->type;
-  double *mass = atom->mass;
   int *mask = atom->mask;
   int nlocal = atom->nlocal, dim = 3;
-
-  double delta_t = sqrt(force->ftm2v) * update->dt;
+  double delta_t = sqrt(force->ftm2v) * update->dt; 
   int tmp;
-  int i, n, d; 
+  int i, d; 
 
-  printf("DELTA_T: %f\n", delta_t);
-
-  for(n = 0; n < 3; n++) {
+  for(i = 0; i < 3; i++) {
     for (d = 0; d < 2; d++) {
-      hetProcStrcs[n][d].maxDiagRecv=0;
-      hetProcStrcs[n][d].maxDiagSend=0;
-      hetProcStrcs[n][d].maxSend=0;
-      hetProcStrcs[n][d].maxRecv=0;
-      hetProcStrcs[n][d].maxNtv=0;
-      hetProcStrcs[n][d].maxFrn=0;
-      hetProcStrcs[n][d].maxPckdRecv=0;
+      hetProcStrcs[i][d].maxDiagRecv=0;
+      hetProcStrcs[i][d].maxDiagSend=0;
+      hetProcStrcs[i][d].maxSend=0;
+      hetProcStrcs[i][d].maxRecv=0;
+      hetProcStrcs[i][d].maxNtv=0;
+      hetProcStrcs[i][d].maxFrn=0;
+      hetProcStrcs[i][d].maxPckdRecv=0;
     }
   }
 
@@ -139,15 +99,14 @@ void FixTrigonometric::setup(int /*vflag*/)
 
   memory->create(forceVec, 3 * nlocal, "trigonometric:forceVec");
   memory->create(forceOut, 3 * nlocal, "trigonometric:forceOut");
+
   for (i = 0; i < nlocal; i++)
-    for (d = 0; d < dim; d++) 
-      if (mask[i] & groupbit)
-        forceVec[index(i,d)] = f[i][d] / sqrt(mass[type[i]]);
+    for (d = 0; d < dim; d++)
+      forceVec[index(i,d)] = f[i][d];
 
-  
-  tmp = updateHessian();
-
-  MPI_Allreduce(&tmp, &nRho, 1, MPI_INT, MPI_MAX, world);
+  updateHessian(); //tmp=
+  nRho = 5;//tmp;
+  //MPI_Allreduce(&tmp, &nRho, 1, MPI_INT, MPI_MAX, world);
   maxRho = nRho;
   createStrc(&forceKry);
   lanczosImplPara(forceVec, &forceKry, dim * nlocal);
@@ -159,50 +118,12 @@ void FixTrigonometric::setup(int /*vflag*/)
     
     for (i = 0; i < nlocal; i++)
       for (d = 0; d < dim; d++)
-        f[i][d] = forceOut[index(i,d)];
+        if (mask[i] & groupbit)
+          f[i][d] = forceOut[index(i,d)];
 
   }
-  
-  for (i = 0; i < nlocal; i++)
-    for (d = 0; d < dim; d++)
-      f[i][d] *= sqrt(mass[type[i]]);
- 
 }
       
-
-void FixTrigonometric::initial_integrate(int vflag) {
-  double **x = atom->x;
-  double **v = atom->v;
-  int *type = atom->type;
-  double *mass = atom->mass;
-  int nlocal = atom->nlocal, dim = 3;
-  double **f = atom->f;
-
-  for (int i = 0; i < nlocal; i++) {
-    for (int d = 0; d < dim; d++) {
-      //Scale equation
-      f[i][d] *= sqrt(mass[type[i]]);
-      x[i][d] *= sqrt(mass[type[i]]);
-      v[i][d] *= sqrt(mass[type[i]]);
-    }
-  }
-}
-
-void FixTrigonometric::post_integrate() {
-  double **x = atom->x;
-  double **v = atom->v;
-  int *type = atom->type;
-  double *mass = atom->mass;
-  int nlocal = atom->nlocal, dim = 3;
-
-  for (int i = 0; i < nlocal; i++) {
-    for (int d = 0; d < dim; d++) {
-      x[i][d] /= sqrt(mass[type[i]]);
-      v[i][d] /= sqrt(mass[type[i]]);
-    }
-  }
-}
-
 void FixTrigonometric::post_neighbor() {
   int nlocal = atom->nlocal;
   setMemory();
@@ -224,22 +145,20 @@ void FixTrigonometric::post_neighbor() {
 
 void FixTrigonometric::post_force(int /*vflag*/) {
   double **f = atom->f;
-  double **v = atom->v;
-
-  int *type = atom->type;
-  double *mass = atom->mass;
   int nlocal = atom->nlocal, dim = 3;
+  int *mask = atom->mask;
 
   double delta_t = sqrt(force->ftm2v) * update->dt;
   int i, d;
   int tmp;
 
   for (i = 0; i < nlocal; i++) 
-    for (d = 0; d < dim; d++) 
-      forceVec[index(i,d)] = f[i][d] / sqrt(mass[type[i]]);
+    for (d = 0; d < dim; d++)
+      forceVec[index(i,d)] = f[i][d]; 
 
-  tmp = updateHessian();
-  MPI_Allreduce(&tmp, &nRho, 1, MPI_INT, MPI_MAX, world);
+  updateHessian(); //tmp=
+  //nRho =tmp;
+  //MPI_Allreduce(&tmp, &nRho, 1, MPI_INT, MPI_MAX, world);
 
   if (maxRho < nRho) {
     if (maxRho > 0) {
@@ -264,30 +183,9 @@ void FixTrigonometric::post_force(int /*vflag*/) {
     //Set new force
     for (i = 0; i < nlocal; i++)
       for (d = 0; d < dim; d++)
-        f[i][d] = forceOut[index(i,d)];
+        if (mask[i] & groupbit)
+          f[i][d] = forceOut[index(i,d)];
 
-  }
-  
-  for (i = 0; i < (nlocal); i++) {
-    for (d = 0; d < dim; d++) {      
-      f[i][d] *= sqrt(mass[type[i]]);
-      //v[i][d] *= sqrt(mass[type[i]]);
-    }
-  }
-}
-
-void FixTrigonometric::end_of_step() {
-  double **v = atom->v;
-  double **f = atom->f;
-  int *type = atom->type;
-  double *mass = atom->mass;
-  int nlocal = atom->nlocal, dim = 3;
-
-  for (int i = 0; i < nlocal; i++) {
-    for (int d = 0; d < dim; d++) {
-      v[i][d] /= sqrt(mass[type[i]]);
-      //f[i][d] /= sqrt(mass[type[i]]);
-    }
   }
 }
 
@@ -307,8 +205,6 @@ void FixTrigonometric::matVecImpl(double* in, double* out) {
 
   commVec(in);
 
-  //printVec(in, dim * nlocal);
-
   for (i = 0; i < nlocal; i++)
     for (d = 0; d < dim; d++)
       out[index(i, d)] = .0;
@@ -323,25 +219,20 @@ void FixTrigonometric::matVecImpl(double* in, double* out) {
     tmp11 = m[aType[i1]];
     tmp22 = m[aType[i2]];
     tmp12 = sqrt(tmp11) * sqrt(tmp22);
-    //printf("Bond %d between %d and %d\n", n, i1,i2);
     for (d = 0; d < dim; d++) {
       for (b = 0; b < dim; b++) {
         if (mask[i1] & groupbit) {
           out[index(i1,d)] -= (implHessian[n][d * dim + b] / tmp11) * in[index(i1,b)];
-          //printf("1\n");
           if (mask[i2] & groupbit) {
-            //printf("2\n");
             out[index(i1,d)] += (implHessian[n][d * dim + b] / tmp12) * in[index(i2,b)];
             out[index(i2,d)] += (implHessian[n][d * dim + b] / tmp12) * in[index(i1,b)];
           }
         }
         if (mask[i2] & groupbit) {
-          //printf("3\n");
           out[index(i2,d)] -= (implHessian[n][d * dim + b] / tmp22) * in[index(i2,b)];
         }
       }
     }
-    //getchar();
   }
 
   for (i = 0; i < 3; i++) {
@@ -372,16 +263,6 @@ void FixTrigonometric::matVecImpl(double* in, double* out) {
   }
 }
 
-void FixTrigonometric::valVecProd(double a, double* v, double* out, int n) {
-  for (int i = 0; i < n; i++)
-    out[i] = a * v[i];
-}
-
-void FixTrigonometric::vecVecSub(double* a, double* b, double* out, int n) {
-  for (int i = 0; i < n; i++)
-    out[i] = a[i] - b[i];
-}
-
 double FixTrigonometric::vecVecProdPara(double* inA, double* inB, int n) {
   double prodGlob = 0.0;
   double prodLoc = 0.0;
@@ -399,7 +280,7 @@ double FixTrigonometric::calcNormPara(double* vec, int n) {
   double sumGlob = 0.0;
 
   for (int i = 0; i < n; i++) 
-    sumLoc += sqr(vec[i]);
+    sumLoc += vec[i] * vec[i];
   
   MPI_Allreduce(&sumLoc, &sumGlob, 1, MPI_DOUBLE, MPI_SUM, world);
   sumGlob = sqrt(sumGlob);
@@ -430,7 +311,7 @@ void FixTrigonometric::lanczosImplPara(double *b, KrylovStrc *strc, int n) {
      for (m = 1; m < nRho - 1; m++) {
       counter++;
       strc->beta[m - 1] = calcNormPara(strc->matV[m], n);
-      if (strc->beta[m - 1] < 0.001) break;
+      if (strc->beta[m - 1] < 0.01) break;
 
       for (i = 0; i < n; i++) 
         strc->matV[m][i] /= strc->beta[m-1];
@@ -452,7 +333,7 @@ void FixTrigonometric::lanczosImplPara(double *b, KrylovStrc *strc, int n) {
 }
 
 void FixTrigonometric::createStrc(KrylovStrc *strc) {
-  maxLoc = atom->nlocal;// + atom->nghost;
+  maxLoc = atom->nlocal;
   strc->kDim = 0;
   memory->create(strc->alpha, nRho, "trigonometric:Alpha");
   memory->create(strc->beta, nRho, "trigonometric:Beta");
@@ -476,22 +357,19 @@ double fac(double x) {
   }
 }
 
-double evaluatePsi(double value, double delta_t, int taylorLV) {
+double evaluatePsi(double value, double delta_t) {
   double tmpVal, sum;
-  //printf("%f %f-> ", value, delta_t);
+  int taylorLV = 5;
 
-  if (fabs((sqr(delta_t) / 4.0) * value) > 0.001) {
-    if(value > 0) {				
-      value = sqrt(value);
-      value = sin((delta_t / 2.0) * value) / ((delta_t / 2.0) * value);
-    } else {
-      value = sqrt(fabs(value));
-      value = sinh((delta_t / 2.0) * value) / ((delta_t / 2.0) * value);
-    }
-    value *= value;
+  double dX = delta_t * delta_t * fabs(value) / 4.0;
+
+  if (dX > 0.001) {
+    dX = sqrt(dX);
+    dX = sin(dX)/dX;
+    value = dX * dX;
   } else {
     sum = 1;
-    tmpVal = fabs((sqr(delta_t) / 4.0) * value);
+    tmpVal = dX;
     for (int j = 1; j < taylorLV; j++) {
       if (j % 2 == 0) {
         sum += tmpVal / fac(2.0 * j + 1.0);
@@ -499,120 +377,11 @@ double evaluatePsi(double value, double delta_t, int taylorLV) {
       else {
         sum -= tmpVal / fac(2.0 * j + 1.0);
       }
-      tmpVal *= fabs((sqr(delta_t) / 4.0) * value);
+      tmpVal *= dX;
     }
-    value = sqr(sum);
-  }
-  //printf("%f \n", value);
-
-  return value;
-}
-
-double evaluatePsi_0(double value, double delta_t, int taylorLV) {
-  if (value> 0) {
-    value = cos(delta_t * sqrt(value));
-  } else {
-    value = cosh(delta_t * sqrt(-value));
+    value = sum * sum;
   }
   return value;
-}
-
-double evaluatePsi_1(double value, double delta_t, int taylorLV) {
-  return 1.0;
-}
-
-double evaluatePhi(double value, double delta_t, int taylorLV) {
-  if (fabs(value) > 0.001) {
-    if(value > 0) {				
-      value = sqrt(value);
-      value = (sin(delta_t * value) / (delta_t * value)) * (1.0 + (1.0 / 3.0) * sqr(sin((delta_t / 2.0) * value)));
-    } else {
-      value = sqrt(-value);
-      value = (sinh(delta_t * value) / (delta_t * value)) * (1.0 + (1.0 / 3.0) * sqr(sinh((delta_t / 2.0) * value)));
-    }	
-  } else {
-    value = 1 - ((sqr(delta_t)) * value)/12.0 - sqr((sqr(delta_t)) * value)/80.0 + (19.0 * cube((sqr(delta_t)) * value))/10080.0;
-  }
-
-  return value;
-}
-
-void evaluateFunc(double delta_t, double* eval, int func, int dim) {
-  int taylorLV = 5;
-  double tmpVal, sum;
-  
-  //0: cos 1:sinc 2:(x/h)*sin 3:psi 4:psi_0 5:psi_1 6: phi
-  switch(func) {
-    case 0:
-      for (int i = 0; i < dim; i++) { 
-        if (eval[i] > 0) {
-          eval[i] = cos(delta_t * sqrt(eval[i]));
-        } else {
-          eval[i] = cosh(delta_t * sqrt(-eval[i]));
-        }
-      };
-    break;
-    case 1:
-      for (int i = 0; i < dim; i++) {
-        if (fabs(eval[i]) > 0.001) {
-          if(eval[i] > 0) {
-            eval[i] = sqrt(eval[i]);
-            eval[i] = sin(delta_t * eval[i]) / (delta_t * eval[i]);
-          } else {
-            eval[i] = sqrt(-eval[i]);
-            eval[i] = sinh(delta_t * eval[i]) / (delta_t * eval[i]);
-          }
-        } else {
-          sum = 1;
-          tmpVal = fabs((sqr(delta_t)) * eval[i]);
-          for (int j = 1; j < taylorLV; j++) {
-            if (j % 2 == 0) {
-              sum += tmpVal / fac(2.0 * j + 1.0);
-            } else {
-              sum -= tmpVal / fac(2.0 * j + 1.0);
-            }
-          }
-          eval[i] = sum;
-        }
-      };
-    break;
-    case 2:
-      for (int i = 0; i < dim; i++) {
-        if(eval[i] > 0) {
-          eval[i] = sqrt(eval[i]);
-          eval[i] = eval[i] * sin(delta_t * eval[i]);
-        } else {
-          //Complex value - lets not talk about this .. for now
-          eval[i] = sqrt(-eval[i]);
-          eval[i] = eval[i] * sinh(delta_t * eval[i]);
-        }
-
-      };
-    break;
-    case 3:
-      for (int i = 0; i < dim; i++) {
-        eval[i] = evaluatePsi(eval[i], delta_t, taylorLV);
-      };
-    break;
-    case 4:
-      for (int i = 0; i < dim; i++) {
-        eval[i] = evaluatePsi_0(eval[i], delta_t, taylorLV);
-      };
-    break;
-    case 5:
-      for (int i = 0; i < dim; i++) {
-        eval[i] = evaluatePsi_1(eval[i], delta_t, taylorLV);
-      };
-    break;
-    case 6:
-      for (int i = 0; i < dim; i++) {
-        eval[i] = evaluatePhi(eval[i], delta_t, taylorLV);
-      };
-    break;
-    default:
-      printf("FAULTY -func- FAULT\n");
-    break;
-  }
 }
 
 void FixTrigonometric::matFuncSmaller(double *alpha, double *beta, int aDim, int func, double delta_t, double *out) {
@@ -643,7 +412,9 @@ void FixTrigonometric::matFuncSmaller(double *alpha, double *beta, int aDim, int
 	}
   
   // Apply function to Eigenvalue
-  evaluateFunc(delta_t, d, func, n);  
+  for (int i = 0; i < n; i++) {
+    d[i] = evaluatePsi(d[i], delta_t);
+  }
 
   for (i = 0; i < n; i++) {
     sumc = 0;
@@ -681,24 +452,11 @@ void FixTrigonometric::matFuncPara(KrylovStrc *strc, double delta_t, int func, i
   delete [] matOut;
 }
 
-void FixTrigonometric::printMat(double** matIn, int n, int m) {
-	printf(" ----------MATRIX---------- \n");
-	for (int i = 0; i < n; i++) {
-		for (int j = 0; j < m; j++) {
-			printf("%f ", matIn[i][j]);
-		}
-		printf("\n");
-	}
-	printf(" -------------------------- \n");
-}
-
 int FixTrigonometric::findProc(double *x) {
   int ret = 0;
-  int igx, igy, igz; //Dont think I need you guys
   double *tmpX;
+  int igx, igy, igz; 
   tmpX = new double[3];
-
-    // HATE IT
   
   for (int d = 0; d < 3; d++) {
     tmpX[d] = x[d];
@@ -795,7 +553,6 @@ void FixTrigonometric::assignBonds(int *storeProc) {
   tagint i1G, i2G;
   int mppd;
 
-  //WAY TO COMPLICATED AND INEFFICIENT... [Not used too often]
   for (int n = 0; n < nbondlist; n++) {
     i1 = bondlist[n][0];
     i2 = bondlist[n][1];
@@ -808,7 +565,6 @@ void FixTrigonometric::assignBonds(int *storeProc) {
         homBondList[c1][1] = i2;
         homBondList[c1++][2] = type;
       } else {
-        //TODO: FOR now easier to read- later only put when need
         i1G = atom->tag[i1];
         i2G = atom->tag[i2];
         if (i2 >= nlocal) {
@@ -1133,7 +889,6 @@ void FixTrigonometric::update_hetComm() {
     }
     nextHet:;
   }
-  //THIS COULD BE MADE WITH ONE COM STEP - MORE COMPLICATED - COULD IT REALLY?
   //Comm existence of diag bonds - only necessary if newton on
   for (n = 0; n < 3; n++) {
     for (d = 0; d < 2; d++) {
@@ -1359,7 +1114,7 @@ void FixTrigonometric::commVec(double *vec) {
         }
       }
       tmpSend = hetProcStrcs[n][1-d].nMyBonds[0] + hetProcStrcs[n][1-d].nYourBonds[0] + hetProcStrcs[n][1-d].nNtvDiag + hetProcStrcs[n][1-d].nFrnDiag;
-      tmpRecv = het + hetProcStrcs[n][d].nDiagRecv;// hetProcStrcs[n][d].nFrnRecv + hetProcStrcs[n][d].nNtvRecv;
+      tmpRecv = het + hetProcStrcs[n][d].nDiagRecv;
 
       MPI_Irecv(hetProcStrcs[n][d].packedRecv, 3 * tmpRecv,MPI_DOUBLE,comm->procneigh[n][d],0,world,&request[n+3*d]);
       MPI_Send(hetProcStrcs[n][1-d].hetSend,3 * tmpSend,MPI_DOUBLE,comm->procneigh[n][1-d],0,world);
@@ -1435,7 +1190,6 @@ void FixTrigonometric::setMemory() {
   nHet = 0;
   nHess = 0;
 
-   //WAY TO COMPLICATED AND INEFFICIENT...
   for (int n = 0; n < nbondlist; n++) {
     i1 = bondlist[n][0];
     i2 = bondlist[n][1];
@@ -1482,16 +1236,7 @@ void FixTrigonometric::setMemory() {
 
     maxHet = nHet;
   }  
-}
-
-void FixTrigonometric::printImplHessian() {
-  for (int i = 0; i < nHess; i++) {
-    for (int j = 0; j < 9; j++) {
-      printf("%d:(%d) %.15f  ", comm->me, i, implHessian[i][j]);
-    }
-    printf("\n");
-  }
-}
+} 
 
 int FixTrigonometric::updateHessian() {
   //Grab Some Information
@@ -1518,7 +1263,7 @@ int FixTrigonometric::updateHessian() {
   //INDICIES 'N COUNTERS
   int j,k,b,d;
 
-  kappa = (double*)bond->extract("kappa", bdim); //What does the dim mean for different bonds?
+  kappa = (double*)bond->extract("kappa", bdim);
   r0 = (double*)bond->extract("r0", bdim);
 
   for (n = 0; n < nHess; n++) {
@@ -1543,17 +1288,15 @@ int FixTrigonometric::updateHessian() {
       }
       rsq += del[d] * del[d];
     }
-
     r = sqrt(rsq);
-
     if (r > 0.0) { 
       for (d = 0; d < dim; d++) {
-        for (b = 0; b < dim; b++) {
-          implHessian[n][counter++] =  -k0B*r0B/(r*rsq) * ((del[d] * del[b]));//(r0B/r)*(1.0-(del[d]*del[b])/rsq)-1.0; 2//(k0B) * ((del[d] * del[b]) * r0B) / (r * r * r)
+        for (b = 0; b < dim; b++) { 
+          //implHessian[n][counter] =  -k0B*(del[d] * del[b])/(rsq); //Assumes that we are in the equilbirum i.e. f(q_e) = 0. Makes sense if you think about it 8-)
+          implHessian[n][counter] =  -k0B*r0B*(del[d] * del[b])/(r*rsq);
+          if (d==b) implHessian[n][counter] -= k0B*(1-(r0B/r));
+          counter++;
         }
-      }
-      for (d = 0; d < dim; d++) {
-        //implHessian[n][4*d] +=  k0B*(r-r0B)/(r);
       }
     } else {
       for (d = 0; d < dim; d++) {
@@ -1564,6 +1307,7 @@ int FixTrigonometric::updateHessian() {
     }
   }
 
+  //loop over neighbor procs
   for (i = 0; i < 3; i++) {
     for (dm = 0; dm < 2; dm++) {
       for (n = 0; n < hetProcStrcs[i][dm].nShrdHet; n++) {
@@ -1587,7 +1331,10 @@ int FixTrigonometric::updateHessian() {
         if (r > 0.0) { 
           for (d = 0; d < dim; d++) {
             for (b = 0; b < dim; b++) {
-              hetProcStrcs[i][dm].shrdHessian[n][counter++] = - (k0B) * ((del[d] * del[b]) * r0B) / (r * r * r);
+              //implHessian[n][counter] =  -k0B*(del[d] * del[b])/(rsq);
+              hetProcStrcs[i][dm].shrdHessian[n][counter] = -k0B*r0B*(del[d]*del[b])/(r*rsq);
+              if (d==b) hetProcStrcs[i][dm].shrdHessian[n][counter] -= k0B*(1-(r0B/r));
+              counter++;
             }
           }
         } else {
@@ -1601,7 +1348,7 @@ int FixTrigonometric::updateHessian() {
     }
   }
 
-  ret = 5;//(int)sqrt(kappaMax * maxspecial);
+  ret = 5;
 
   delete []del;
 

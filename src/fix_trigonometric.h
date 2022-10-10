@@ -29,20 +29,14 @@ FixStyle(trigonometric,FixTrigonometric)
 namespace LAMMPS_NS {
 class FixTrigonometric : public Fix {
   #define index(i, d) i * 3 + d
-  #define sqr(x) ((x)*(x))
-  #define cube(x) ((x)*(x)*(x))//Square & cube of a double value WHERE DOES THIS BELONG???
 
   public:
     FixTrigonometric(class LAMMPS *, int, char **);
     ~FixTrigonometric();
     int setmask();
-    virtual void init(); 
     void setup(int);
-    virtual void initial_integrate(int);
-    virtual void post_integrate();
     virtual void post_neighbor();
     virtual void post_force(int);
-    virtual void end_of_step();
   protected:
 
     /*KRYLOV STRUCTURE*/
@@ -98,9 +92,6 @@ class FixTrigonometric : public Fix {
     KrylovStrc forceKry; 
     HetProcStrc hetProcStrcs[3][2];
 
-    //int *procLocals;
-    //int *displacements;
-
     double** implHessian;
     int** homBondList;
     int** hetBondList;
@@ -121,12 +112,8 @@ class FixTrigonometric : public Fix {
 
     /* Utilities */
     double vecVecProdPara(double* inA, double* inB, int n);
-    void valVecProd(double a, double *v, double *out, int n);
-    void vecVecSub(double* a, double* b, double* out, int n);
     double calcNormPara(double* vec, int n);
-    void printMat(double** matIn, int n, int m);
-    void printVec(double* vecIn, int n);
-    
+ 
     /* Matrixfunction */
     void matFuncSmaller(double* alpha, double* beta, int aDim, int func, double delta_t, double* out);
     void lanczosImplPara(double *b, KrylovStrc *strc, int n);
@@ -159,8 +146,6 @@ class FixTrigonometric : public Fix {
 
     /* Implicit Hessian */
     void setMemory();
-    void printImplHessian();
-    /* Update Hessian */
     int updateHessian();
 };
 
